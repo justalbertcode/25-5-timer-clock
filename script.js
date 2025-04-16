@@ -7,32 +7,33 @@ const sessionIncrementBtn = document.getElementById("session-increment");
 const sessionLength = document.getElementById("session-length");
 
 const timeLeft = document.getElementById("time-left");
-const startStopBtn = document.getElementById("start-stop");
-const pauseBtn = document.getElementById("pause");
+
+const startStopBtn = document.getElementById("start_stop");
 const resetBtn = document.getElementById("reset");
 
 const beep = document.getElementById("beep");
 
-const breakLengthDefaultValue = 5;
 let breakLengthValue = 5;
-
-const sessionLengthDefaultValue = 25;
 let sessionLengthValue = 25;
 
-const sessionDurationMinutes = 25;
 let isStarted = false;
-let isPaused = true;
+let isPaused = false;
+let isSession = true; // Флаг для отслеживания режима сессии или перерыва
 let interval;
 let time = sessionLengthValue * 60;
 
 //break increment and decrement
 breakIncrementBtn.addEventListener("click", () => {
+  if (breakLengthValue >=60) {
+    return;
+  } else {
   breakLengthValue += 1;
   breakLength.innerText = breakLengthValue;
+  }
 });
 
 breakDecrementBtn.addEventListener("click", () => {
-  if (breakLengthValue === 1) {
+  if (breakLengthValue <=1) {
     return;
   } else {
     breakLengthValue -= 1;
@@ -42,102 +43,101 @@ breakDecrementBtn.addEventListener("click", () => {
 
 //session increment and decrement
 sessionIncrementBtn.addEventListener("click", () => {
+  if (sessionLengthValue >=60) {
+    return;
+  } else {
     sessionLengthValue += 1;
     sessionLength.innerText = sessionLengthValue;
     timeLeft.innerText= `${sessionLengthValue}:00`;
-    
+  } 
   });
   
   sessionDecrementBtn.addEventListener("click", () => {
-    if (sessionLengthValue === 1) {
+    if (sessionLengthValue <=1) {
       return;
     } else {
         sessionLengthValue -= 1;
         sessionLength.innerText = sessionLengthValue;
         timeLeft.innerText= `${sessionLengthValue}:00`;
-        
     }
   });
 
- 
-  function updateCount() {
-    if (time < 0) {
-      clearInterval(interval);
-      isPaused = true;
-      toggleControls(false);
-      beep.currentTime = 0;
-      beep.play();
-      return;
-    }
-    const minutes = Math.floor(time / 60);
-    let seconds = time % 60;
-    seconds = seconds < 10 ? '0' + seconds : seconds;
-    timeLeft.innerHTML = `${minutes}:${seconds}`;
-    time--;
-  }
-  
-  function toggleControls(state) {
-    breakIncrementBtn.disabled = state;
-    breakDecrementBtn.disabled = state;
-    sessionIncrementBtn.disabled = state;
-    sessionDecrementBtn.disabled = state;
-    pauseBtn.disabled = !state;
-  }
-  
-   
-  const startWatch = () => {
-    if (!isPaused) return; 
-    isPaused = false;
-    toggleControls(true);
-    // Только если это первый старт — устанавливаем time
-    if (!isStarted) {
-      
-      clearInterval(interval);
-      time = sessionLengthValue * 60;
-      isStarted = true;
-      updateCount();
-    }
-  
-    interval = setInterval(updateCount, 1000);
-  };
-
-
-  const pauseWatch = () => {
+// Обновление времени на экране
+function updateCount() {
+  if (time < 0) {
     clearInterval(interval);
-    isPaused = true;
-    beep.pause();
     beep.currentTime = 0;
-  };
-  
-  const resetWatch = () => {
-    isStarted = false;
-    isPaused = true;
-    toggleControls(false);
-    breakLengthValue = breakLengthDefaultValue;
-    sessionLengthValue = sessionLengthDefaultValue;
-    time = sessionLengthValue * 60;
-    breakLength.innerText = breakLengthValue;
-    sessionLength.innerText = sessionLengthValue;
-    timeLeft.innerHTML = `${sessionLengthValue}:00`;
+    beep.play();
+    if (isSession) {
+      isSession = false;
+      time = breakLengthValue * 60;
+      timeLeft.innerText = `${breakLengthValue}:00`;
+    } else {
+      isSession = true;
+      time = sessionLengthValue * 60;
+      timeLeft.innerText = `${sessionLengthValue}:00`;
+    }
+    setTimeout(() => {
+      interval = setInterval(updateCount, 1000);
+    }, 1000); // Ждем 1 секунду перед переключением на следующий режим
+    return;
+  }
+  const minutes = Math.floor(time / 60);
+  let seconds = time % 60;
+  seconds = seconds < 10 ? '0' + seconds : seconds;
+  timeLeft.innerHTML = `${minutes}:${seconds}`;
+  time--;
+}
+
+// Отключение/включение кнопок
+function toggleControls(state) {
+  breakIncrementBtn.disabled = state;
+  breakDecrementBtn.disabled = state;
+  sessionIncrementBtn.disabled = state;
+  sessionDecrementBtn.disabled = state;
+}
+
+// Запуск таймера
+const startWatch = () => {
+  if (!isStarted) {
     clearInterval(interval);
+    time = sessionLengthValue * 60;
+    startStopBtn.innerText = "Pause";
+    isStarted = true;
+    updateCount();
+    toggleControls(true);
+    interval = setInterval(updateCount, 1000);
+  } else if (isStarted && !isPaused) {
+    startStopBtn.innerText = "Start";
+    clearInterval(interval);
+    isPaused = true;
+  } else {
+    startStopBtn.innerText = "Pause";
+    isPaused = false;
+    interval = setInterval(updateCount, 1000);
+  }
+};
 
-    breakLength.innerText = breakLengthDefaultValue;
-    sessionLength.innerText = sessionLengthDefaultValue;
-    breakLength.classList.add('reset');
-    sessionLength.classList.add('reset');
-    timeLeft.classList.add('reset');
+// Сброс таймера
+const resetWatch = () => {
+  clearInterval(interval);
+  isStarted = false;
+  isPaused = false;
+  beep.pause();
+  beep.currentTime = 0;
+  toggleControls(false);
+  breakLengthValue = 5;
+  sessionLengthValue = 25;
+  time = sessionLengthValue * 60;
+  breakLength.innerText = 5;
+  sessionLength.innerText = 25;
+  timeLeft.innerHTML = `${sessionLengthValue}:00`;
+};
 
-  setTimeout(()=>{
-    breakLength.classList.remove('reset');
-    sessionLength.classList.remove('reset');
-    timeLeft.classList.remove('reset');
-  }, 200);
-  };
-
+// Слушатель событий для кнопок
 document.addEventListener("click", (e) => {
   const element = e.target;
-  if (element.id === "start-stop") startWatch();
-  if (element.id === "pause") pauseWatch();
+  if (element.id === "start_stop") startWatch();
   if (element.id === "reset") resetWatch();
 });
 
